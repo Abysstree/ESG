@@ -21,6 +21,7 @@ import {
   listImports,
   listJobs,
   listLLMProviders,
+  listRoleProfiles,
   listSearchProviders,
   rebuildLLMJobs,
   rebuildMockJobs,
@@ -58,6 +59,7 @@ import type {
   SearchProviderType,
   SearchStatus,
   SourceType,
+  StoredRoleProfile,
 } from './types/api'
 import type {
   ApiStatus,
@@ -195,9 +197,13 @@ function App() {
   )
   const mindMapBranches = useMemo(
     () => {
-      const llmProfile = selectedRole?.name
-        ? roleProfileResults[selectedRole.name]?.role_profile
+      const roleProfileResult = selectedRole?.name
+        ? roleProfileResults[selectedRole.name]
         : null
+      const llmProfile =
+        roleProfileResult && roleProfileResult.status !== 'stale'
+          ? roleProfileResult.role_profile
+          : null
       const llmBranches = buildMindMapBranchesFromLLMProfile(llmProfile)
       return llmBranches.length ? llmBranches : selectedRole ? buildMindMapBranches(selectedRole) : []
     },
@@ -286,12 +292,13 @@ function App() {
       try {
         await getHealth()
         setApiStatus('online')
-        const [rawImports, jobs, llm, search, profiles] = await Promise.all([
+        const [rawImports, jobs, llm, search, profiles, savedRoleProfiles] = await Promise.all([
           listImports(),
           listJobs(),
           getLLMStatus(),
           getSearchStatus(),
           listCompanyProfiles(),
+          listRoleProfiles(),
         ])
         const [providers, searchProviderList] = await Promise.all([
           listLLMProviders(),
@@ -300,6 +307,7 @@ function App() {
         setImports(rawImports)
         setJobCards(jobs)
         setCompanyProfiles(indexCompanyProfiles(profiles))
+        setRoleProfileResults(indexRoleProfiles(savedRoleProfiles))
         setLlmStatus(llm)
         setLlmProviders(providers)
         setSearchStatus(search)
@@ -394,6 +402,25 @@ function App() {
     setErrorMessage(null)
   }
 
+  function markCachedRoleProfilesStale(roleNames: Array<string | null | undefined>) {
+    const normalizedRoleNames = Array.from(
+      new Set(roleNames.map((roleName) => roleName?.trim()).filter(Boolean)),
+    ) as string[]
+    if (normalizedRoleNames.length === 0) return
+
+    setRoleProfileResults((currentResults) => {
+      let changed = false
+      const nextResults = { ...currentResults }
+      for (const roleName of normalizedRoleNames) {
+        const result = nextResults[roleName]
+        if (!result || result.status === 'stale') continue
+        nextResults[roleName] = { ...result, status: 'stale' }
+        changed = true
+      }
+      return changed ? nextResults : currentResults
+    })
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setErrorMessage(null)
@@ -418,6 +445,7 @@ function App() {
 
     setIsSubmitting(true)
     try {
+      const previousJobIds = new Set(jobCards.map((job) => job.id))
       const savedImport =
         sourceType === 'screenshot' && screenshotFile
           ? await createScreenshotImport(screenshotFile, trimmedRawText || null)
@@ -433,7 +461,13 @@ function App() {
             })
 
       setImports((currentImports) => [savedImport, ...currentImports])
-      setJobCards(await listJobs())
+      const updatedJobs = await listJobs()
+      setJobCards(updatedJobs)
+      markCachedRoleProfilesStale(
+        updatedJobs
+          .filter((job) => !previousJobIds.has(job.id))
+          .map((job) => job.role_category),
+      )
       setSourceValue('')
       setRawText('')
       setScreenshotFile(null)
@@ -452,6 +486,10 @@ function App() {
       const rawImports = await listImports()
       setJobCards(rebuiltJobs)
       setImports(rawImports)
+      markCachedRoleProfilesStale([
+        ...jobCards.map((job) => job.role_category),
+        ...rebuiltJobs.map((job) => job.role_category),
+      ])
     } catch {
       setErrorMessage('重新抽取失败，请确认后端服务正在运行。')
     } finally {
@@ -467,6 +505,10 @@ function App() {
       const rawImports = await listImports()
       setJobCards(rebuiltJobs)
       setImports(rawImports)
+      markCachedRoleProfilesStale([
+        ...jobCards.map((job) => job.role_category),
+        ...rebuiltJobs.map((job) => job.role_category),
+      ])
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -488,6 +530,7 @@ function App() {
           currentJobs.map((item) => (item.id === updatedJob.id ? updatedJob : item)),
         ),
       )
+      markCachedRoleProfilesStale([job.role_category, updatedJob.role_category])
       setImports(await listImports())
     } catch (error) {
       setErrorMessage(
@@ -545,6 +588,8 @@ function App() {
     setErrorMessage(null)
     setSavingJobId(jobId)
     try {
+      const previousRoleCategory =
+        jobCards.find((job) => job.id === jobId)?.role_category ?? null
       const updatedJob = await updateJob(jobId, {
         title: editDraft.title.trim(),
         company_name: editDraft.company_name.trim() || null,
@@ -563,6 +608,7 @@ function App() {
       setJobCards((currentJobs) =>
         currentJobs.map((job) => (job.id === updatedJob.id ? updatedJob : job)),
       )
+      markCachedRoleProfilesStale([previousRoleCategory, updatedJob.role_category])
       setEditingJobId(null)
       setEditDraft(null)
     } catch {
@@ -581,6 +627,7 @@ function App() {
     try {
       await deleteJob(job.id)
       setJobCards((currentJobs) => currentJobs.filter((item) => item.id !== job.id))
+      markCachedRoleProfilesStale([job.role_category])
       if (editingJobId === job.id) {
         setEditingJobId(null)
         setEditDraft(null)
@@ -602,6 +649,9 @@ function App() {
     setErrorMessage(null)
     setDeletingImportId(rawImport.id)
     try {
+      const removedRoleCategories = jobCards
+        .filter((job) => job.raw_import_id === rawImport.id)
+        .map((job) => job.role_category)
       await deleteImport(rawImport.id)
       setImports((currentImports) =>
         currentImports.filter((item) => item.id !== rawImport.id),
@@ -609,6 +659,7 @@ function App() {
       setJobCards((currentJobs) =>
         currentJobs.filter((job) => job.raw_import_id !== rawImport.id),
       )
+      markCachedRoleProfilesStale(removedRoleCategories)
     } catch {
       setErrorMessage('删除导入记录失败，请确认后端服务正在运行。')
     } finally {
@@ -1136,6 +1187,24 @@ function indexCompanyProfiles(profiles: CompanyProfile[]) {
     indexedProfiles[profile.company_name] = profile
     return indexedProfiles
   }, {})
+}
+
+function indexRoleProfiles(profiles: StoredRoleProfile[]) {
+  return profiles.reduce<Record<string, LLMRoleProfileResult>>(
+    (indexedProfiles, profile) => {
+      indexedProfiles[profile.role_category] = {
+        provider: profile.provider ?? 'unknown',
+        mode: profile.mode ?? 'cloud',
+        input: profile.input,
+        role_profile: profile.role_profile,
+        raw_model_response: profile.raw_model_response,
+        status: profile.status,
+        updated_at: profile.updated_at,
+      }
+      return indexedProfiles
+    },
+    {},
+  )
 }
 
 export default App

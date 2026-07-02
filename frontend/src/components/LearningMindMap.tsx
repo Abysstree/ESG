@@ -17,7 +17,7 @@ import {
 import '@xyflow/react/dist/style.css'
 import { MIND_MAP_DEFAULT_ZOOM } from '../constants/app'
 import type { LLMRoleProfileResult } from '../types/api'
-import type { MindMapBranch, RoleSummary } from '../types/app'
+import type { MindMapBranch, MindMapNode, RoleSummary } from '../types/app'
 
 type LearningMindMapProps = {
   roleSummaries: RoleSummary[]
@@ -49,6 +49,9 @@ type LearningNodeData = {
   branchTitle?: string
   sourceLabel: string
   evidence: string[]
+  depth?: number
+  nodeType?: string
+  level?: string
   isCollapsed?: boolean
   isSelected?: boolean
   isExpanded?: boolean
@@ -58,6 +61,22 @@ type LearningNodeData = {
 type LearningGraph = {
   nodes: Node<LearningNodeData>[]
   edges: Edge[]
+}
+
+type VisibleTopicNode = {
+  id: string
+  parentId: string
+  branchId: string
+  branchTitle: string
+  title: string
+  color: string
+  side: BranchSide
+  depth: number
+  nodeType: string
+  level: string
+  evidence: string[]
+  childCount: number
+  isExpanded: boolean
 }
 
 const nodeTypes = {
@@ -73,6 +92,7 @@ const MIN_EXPANDED_TOPIC_NODE_HEIGHT = 190
 const TOPIC_ROW_GAP = 18
 const BRANCH_X = 430
 const TOPIC_X = 800
+const TOPIC_LEVEL_X_GAP = 310
 const LEFT_TOPIC_SELECTED_EXTRA_WIDTH = 130
 
 function LearningMindMap(props: LearningMindMapProps) {
@@ -102,6 +122,7 @@ function LearningMindMapInner({
   const clickTimerRef = useRef<number | null>(null)
   const [selectedNodeId, setSelectedNodeId] = useState<string>('center')
   const [expandedTopicIds, setExpandedTopicIds] = useState<string[]>([])
+  const isRoleProfileStale = roleProfileResult?.status === 'stale'
   const allTopicNodeIds = useMemo(
     () => buildAllTopicNodeIds(mindMapBranches),
     [mindMapBranches],
@@ -144,7 +165,9 @@ function LearningMindMapInner({
   }, [])
   const collapseTopic = useCallback((topicId: string) => {
     setExpandedTopicIds((currentIds) =>
-      currentIds.filter((currentId) => currentId !== topicId),
+      currentIds.filter(
+        (currentId) => currentId !== topicId && !currentId.startsWith(`${topicId}-`),
+      ),
     )
   }, [])
   const clearNodeClickTimer = useCallback(() => {
@@ -261,7 +284,9 @@ function LearningMindMapInner({
           <h3>{selectedRole ? `${selectedRole.name}学习地图` : '学习地图'}</h3>
           {roleProfileResult ? (
             <p className="learning-source-note">
-              LLM地图：{roleProfileResult.provider} · {roleProfileResult.mode}
+              {isRoleProfileStale
+                ? 'LLM地图已过期，当前显示本地聚合地图'
+                : `LLM地图：${roleProfileResult.provider} · ${roleProfileResult.mode}`}
             </p>
           ) : null}
         </div>
@@ -369,6 +394,7 @@ function LearningNode({ data }: NodeProps<Node<LearningNodeData>>) {
   const isTopic = data.kind === 'topic'
   const targetPosition = data.side === 'left' ? Position.Right : Position.Left
   const sourcePosition = data.side === 'left' ? Position.Left : Position.Right
+  const canConnectToChildren = data.kind !== 'topic' || Boolean(data.childCount)
   return (
     <div
       className={`learning-flow-node xmind-node ${data.kind} ${
@@ -379,7 +405,7 @@ function LearningNode({ data }: NodeProps<Node<LearningNodeData>>) {
       {data.kind !== 'center' ? (
         <Handle className="learning-node-handle" type="target" position={targetPosition} />
       ) : null}
-      {data.kind !== 'topic' ? (
+      {canConnectToChildren ? (
         <Handle className="learning-node-handle" type="source" position={sourcePosition} />
       ) : null}
       <div className="xmind-node-main">
@@ -387,7 +413,7 @@ function LearningNode({ data }: NodeProps<Node<LearningNodeData>>) {
         <strong>{data.title}</strong>
         {data.subtitle ? <small>{data.subtitle}</small> : null}
       </div>
-      {isTopic && data.isExpanded ? (
+      {isTopic && data.isExpanded && data.evidence.length > 0 ? (
         <div className="xmind-node-detail">
           <ul>
             {data.evidence.slice(0, 3).map((item) => (
@@ -417,7 +443,10 @@ function buildLearningGraph({
 }): LearningGraph {
   const nodes: Node<LearningNodeData>[] = []
   const edges: Edge[] = []
-  const sourceLabel = roleProfileResult ? 'LLM生成，基于岗位大类聚合' : '本地岗位卡聚合'
+  const sourceLabel =
+    roleProfileResult && roleProfileResult.status !== 'stale'
+      ? 'LLM生成，基于岗位大类聚合'
+      : '本地岗位卡聚合'
   const centerData: LearningNodeData = {
     nodeId: 'center',
     title: selectedRole.name,
@@ -463,19 +492,22 @@ function buildLearningGraph({
     const branchX = branch.side === 'left' ? -BRANCH_X : BRANCH_X
     const isCollapsed = collapsedBranchIds.includes(branch.id)
     const branchNodeId = `branch-${branch.id}`
+    const branchNodeCount = countMindMapNodes(branch.nodes)
     const branchData: LearningNodeData = {
       nodeId: branchNodeId,
       title: branch.title,
-      subtitle: isCollapsed ? `${branch.items.length} 个学习点待展开` : `${branch.items.length} 个学习点`,
+      subtitle: isCollapsed
+        ? `${branchNodeCount} 个学习点待展开`
+        : `${branchNodeCount} 个学习点`,
       kind: 'branch',
       color: branch.color,
       side: branch.side,
       branchId: branch.id,
       sourceLabel,
-      evidence: branch.items.slice(0, 5),
+      evidence: branch.evidence.length ? branch.evidence : branch.items.slice(0, 5),
       isCollapsed,
       isSelected: selectedNodeId === branchNodeId,
-      childCount: branch.items.length,
+      childCount: branch.nodes.length,
     }
 
     nodes.push({
@@ -489,31 +521,27 @@ function buildLearningGraph({
       source: 'center',
       target: branchNodeId,
       type: 'smoothstep',
-      animated: Boolean(roleProfileResult),
+      animated: Boolean(roleProfileResult && roleProfileResult.status !== 'stale'),
       style: { stroke: branch.color, strokeWidth: 3 },
     })
 
     if (isCollapsed) return
 
-    const visibleItems = branch.items.slice(0, 10)
-    const expandedTopicIndexes = expandedTopicIndexesForBranch(
+    const visibleTopics = collectVisibleTopicNodes(
       branch,
       expandedTopicIds,
+      branchNodeId,
     )
-    const topicCenterOffsets = computeTopicCenterOffsets(
-      visibleItems,
-      expandedTopicIndexes,
-      selectedRole,
-    )
+    const topicCenterOffsets = computeTopicCenterOffsets(visibleTopics, selectedRole)
 
-    visibleItems.forEach((item, itemIndex) => {
-      const topicNodeId = `topic-${branch.id}-${itemIndex}`
-      const isSelected = selectedNodeId === topicNodeId
-      const isExpanded = expandedTopicIds.includes(topicNodeId)
-      const evidence = buildTopicEvidence(item, selectedRole)
+    visibleTopics.forEach((topic, itemIndex) => {
+      const isSelected = selectedNodeId === topic.id
+      const evidence = topic.evidence.length
+        ? topic.evidence
+        : buildTopicEvidence(topic.title, selectedRole)
       const topicData: LearningNodeData = {
-        nodeId: topicNodeId,
-        title: item,
+        nodeId: topic.id,
+        title: topic.title,
         kind: 'topic',
         color: branch.color,
         side: branch.side,
@@ -522,25 +550,41 @@ function buildLearningGraph({
         sourceLabel,
         evidence,
         isSelected,
-        isExpanded,
+        isExpanded: topic.isExpanded,
+        childCount: topic.childCount,
+        depth: topic.depth,
+        nodeType: topic.nodeType,
+        level: topic.level,
+        subtitle:
+          topic.childCount > 0
+            ? topic.isExpanded
+              ? `${topic.childCount} 个下级节点已展开`
+              : `${topic.childCount} 个下级节点`
+            : undefined,
       }
-      const topicHeight = estimateTopicNodeHeight(item, evidence, isExpanded)
+      const topicHeight = estimateTopicNodeHeight(
+        topic.title,
+        evidence,
+        topic.isExpanded,
+      )
       const topicX =
         branch.side === 'left'
-          ? -TOPIC_X - (isExpanded ? LEFT_TOPIC_SELECTED_EXTRA_WIDTH : 0)
-          : TOPIC_X
+          ? -TOPIC_X -
+            (topic.depth - 1) * TOPIC_LEVEL_X_GAP -
+            (topic.isExpanded ? LEFT_TOPIC_SELECTED_EXTRA_WIDTH : 0)
+          : TOPIC_X + (topic.depth - 1) * TOPIC_LEVEL_X_GAP
       const topicY = branchCenterY + topicCenterOffsets[itemIndex] - topicHeight / 2
 
       nodes.push({
-        id: topicNodeId,
+        id: topic.id,
         type: 'learningNode',
         position: { x: topicX, y: topicY },
         data: topicData,
       })
       edges.push({
-        id: `edge-${branch.id}-${itemIndex}`,
-        source: branchNodeId,
-        target: topicNodeId,
+        id: `edge-${branch.id}-${itemIndex}-${topic.id}`,
+        source: topic.parentId,
+        target: topic.id,
         type: 'smoothstep',
         style: { stroke: branch.color, strokeWidth: 2, opacity: 0.75 },
       })
@@ -581,55 +625,108 @@ function measureBranchLaneHeight(
     return COLLAPSED_BRANCH_LANE_HEIGHT
   }
 
-  const expandedIndexes = expandedTopicIndexesForBranch(branch, expandedTopicIds)
-  const topicStackHeight = measureTopicStackHeight(
-    branch.items.slice(0, 10),
-    expandedIndexes,
-    role,
+  const visibleTopics = collectVisibleTopicNodes(
+    branch,
+    expandedTopicIds,
+    `branch-${branch.id}`,
   )
+  const topicStackHeight = measureTopicStackHeight(visibleTopics, role)
   return Math.max(MIN_EXPANDED_BRANCH_LANE_HEIGHT, topicStackHeight + 96)
 }
 
-function expandedTopicIndexesForBranch(
+function collectVisibleTopicNodes(
   branch: MindMapBranch,
   expandedTopicIds: string[],
-): Set<number> {
-  const prefix = `topic-${branch.id}-`
-  const indexes = expandedTopicIds
-    .filter((topicId) => topicId.startsWith(prefix))
-    .map((topicId) => Number(topicId.replace(prefix, '')))
-    .filter(Number.isFinite)
-  return new Set(indexes)
+  parentId: string,
+): VisibleTopicNode[] {
+  return collectVisibleChildNodes({
+    nodes: branch.nodes,
+    branch,
+    expandedTopicIds,
+    parentId,
+    parentPath: [],
+    depth: 1,
+  })
+}
+
+function collectVisibleChildNodes({
+  nodes,
+  branch,
+  expandedTopicIds,
+  parentId,
+  parentPath,
+  depth,
+}: {
+  nodes: MindMapNode[]
+  branch: MindMapBranch
+  expandedTopicIds: string[]
+  parentId: string
+  parentPath: number[]
+  depth: number
+}): VisibleTopicNode[] {
+  const visibleNodes: VisibleTopicNode[] = []
+  nodes.forEach((node, index) => {
+    const path = [...parentPath, index]
+    const nodeId = createTopicNodeId(branch.id, path)
+    const isExpanded = expandedTopicIds.includes(nodeId)
+    visibleNodes.push({
+      id: nodeId,
+      parentId,
+      branchId: branch.id,
+      branchTitle: branch.title,
+      title: node.title,
+      color: branch.color,
+      side: branch.side,
+      depth,
+      nodeType: node.nodeType,
+      level: node.level,
+      evidence: node.evidence,
+      childCount: node.children.length,
+      isExpanded,
+    })
+
+    if (isExpanded && node.children.length > 0) {
+      visibleNodes.push(
+        ...collectVisibleChildNodes({
+          nodes: node.children,
+          branch,
+          expandedTopicIds,
+          parentId: nodeId,
+          parentPath: path,
+          depth: depth + 1,
+        }),
+      )
+    }
+  })
+  return visibleNodes
 }
 
 function measureTopicStackHeight(
-  items: string[],
-  expandedIndexes: Set<number>,
+  topics: VisibleTopicNode[],
   role: RoleSummary,
 ): number {
-  if (items.length <= 0) return 0
-  return items.reduce<number>((height, item, index) => {
+  if (topics.length <= 0) return 0
+  return topics.reduce<number>((height, topic, index) => {
     const nodeHeight = estimateTopicNodeHeight(
-      item,
-      buildTopicEvidence(item, role),
-      expandedIndexes.has(index),
+      topic.title,
+      topic.evidence.length ? topic.evidence : buildTopicEvidence(topic.title, role),
+      topic.isExpanded,
     )
-    return height + nodeHeight + (index === items.length - 1 ? 0 : TOPIC_ROW_GAP)
+    return height + nodeHeight + (index === topics.length - 1 ? 0 : TOPIC_ROW_GAP)
   }, 0)
 }
 
 function computeTopicCenterOffsets(
-  items: string[],
-  expandedIndexes: Set<number>,
+  topics: VisibleTopicNode[],
   role: RoleSummary,
 ): number[] {
-  const totalHeight = measureTopicStackHeight(items, expandedIndexes, role)
+  const totalHeight = measureTopicStackHeight(topics, role)
   let cursor = -totalHeight / 2
-  return items.map((item, index) => {
+  return topics.map((topic) => {
     const nodeHeight = estimateTopicNodeHeight(
-      item,
-      buildTopicEvidence(item, role),
-      expandedIndexes.has(index),
+      topic.title,
+      topic.evidence.length ? topic.evidence : buildTopicEvidence(topic.title, role),
+      topic.isExpanded,
     )
     const centerOffset = cursor + nodeHeight / 2
     cursor += nodeHeight + TOPIC_ROW_GAP
@@ -638,8 +735,31 @@ function computeTopicCenterOffsets(
 }
 
 function buildAllTopicNodeIds(branches: MindMapBranch[]): string[] {
-  return branches.flatMap((branch) =>
-    branch.items.slice(0, 10).map((_, index) => `topic-${branch.id}-${index}`),
+  return branches.flatMap((branch) => collectAllTopicNodeIds(branch.nodes, branch.id))
+}
+
+function collectAllTopicNodeIds(
+  nodes: MindMapNode[],
+  branchId: string,
+  parentPath: number[] = [],
+): string[] {
+  return nodes.flatMap((node, index) => {
+    const path = [...parentPath, index]
+    return [
+      createTopicNodeId(branchId, path),
+      ...collectAllTopicNodeIds(node.children, branchId, path),
+    ]
+  })
+}
+
+function createTopicNodeId(branchId: string, path: number[]): string {
+  return `topic-${branchId}-${path.join('-')}`
+}
+
+function countMindMapNodes(nodes: MindMapNode[]): number {
+  return nodes.reduce(
+    (total, node) => total + 1 + countMindMapNodes(node.children),
+    0,
   )
 }
 

@@ -239,4 +239,14 @@ export type LLMRoleProfileResult = {
   input: Record<string, unknown>
   role_profile: LLMRoleProfile
   raw_model_response: unknown
+  status: string
+  updated_at: string | null
+}
+
+export type StoredRoleProfile = LLMRoleProfileResult & {
+  id: number
+  role_category: string
+  job_count: number
+  created_at: string
+  updated_at: string
 }

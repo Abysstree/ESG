@@ -131,6 +131,43 @@ class CompanyProfile(Base):
         return _loads_list(self.inference_notes_json)
 
 
+class RoleCategoryProfile(Base):
+    __tablename__ = "role_category_profiles"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    role_category: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    provider: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    mode: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    input_json: Mapped[str] = mapped_column(Text, default="{}")
+    role_profile_json: Mapped[str] = mapped_column(Text, default="{}")
+    raw_model_response_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), default="fresh")
+    job_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    @property
+    def input(self) -> dict[str, Any]:
+        value = _loads_json(self.input_json, {})
+        return value if isinstance(value, dict) else {}
+
+    @property
+    def role_profile(self) -> dict[str, Any]:
+        value = _loads_json(self.role_profile_json, {})
+        return value if isinstance(value, dict) else {}
+
+    @property
+    def raw_model_response(self) -> Any:
+        return _loads_json(self.raw_model_response_json, None)
+
+
 class LLMProviderConfig(Base):
     __tablename__ = "llm_provider_configs"
 

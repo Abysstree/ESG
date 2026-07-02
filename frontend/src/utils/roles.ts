@@ -1,5 +1,5 @@
 import type { JobCard, LLMRoleProfile } from '../types/api'
-import type { MindMapBranch, RoleSummary } from '../types/app'
+import type { MindMapBranch, MindMapNode, RoleSummary } from '../types/app'
 
 export function deriveRoleSummaries(cards: JobCard[]): RoleSummary[] {
   const groupedCards = new Map<string, JobCard[]>()
@@ -218,20 +218,32 @@ export function buildMindMapBranchesFromLLMProfile(
       position.x,
       position.y,
       position.color,
-      flattenLLMBranchItems(branch.nodes),
+      branch.nodes.map((node, nodeIndex) => convertLLMNode(node, `${branch.id}-${nodeIndex}`)),
+      {
+        focus: branch.focus,
+        sourceFields: branch.source_fields,
+        evidence: branch.evidence,
+      },
     )
   })
 }
 
-function flattenLLMBranchItems(nodes: LLMRoleProfile['learning_map']['branches'][number]['nodes']): string[] {
-  const items: string[] = []
-  for (const node of nodes) {
-    if (node.title) items.push(node.title)
-    for (const child of node.children ?? []) {
-      if (child.title) items.push(child.title)
-    }
+function convertLLMNode(
+  node: LLMRoleProfile['learning_map']['branches'][number]['nodes'][number],
+  fallbackId: string,
+): MindMapNode {
+  const nodeId = normalizeMindMapId(node.id || fallbackId)
+  return {
+    id: nodeId,
+    title: normalizeMindMapItem(node.title),
+    nodeType: node.node_type || 'learning_point',
+    level: node.level || 'foundation',
+    sourceFields: node.source_fields ?? [],
+    evidence: node.evidence ?? [],
+    children: (node.children ?? []).map((child, index) =>
+      convertLLMNode(child, `${nodeId}-${index}`),
+    ),
   }
-  return items
 }
 
 function createMindMapBranch(
@@ -241,8 +253,14 @@ function createMindMapBranch(
   x: number,
   y: number,
   color: string,
-  items: string[],
+  itemsOrNodes: string[] | MindMapNode[],
+  options: {
+    focus?: string
+    sourceFields?: string[]
+    evidence?: string[]
+  } = {},
 ): MindMapBranch {
+  const nodes = toMindMapNodes(itemsOrNodes)
   return {
     id,
     title,
@@ -250,8 +268,28 @@ function createMindMapBranch(
     x,
     y,
     color,
-    items: compactMindMapItems(items),
+    items: nodes.map((node) => node.title),
+    nodes,
+    sourceFields: options.sourceFields ?? [],
+    evidence: options.evidence ?? [],
+    focus: options.focus ?? title,
   }
+}
+
+function toMindMapNodes(itemsOrNodes: string[] | MindMapNode[]): MindMapNode[] {
+  if (itemsOrNodes.length > 0 && typeof itemsOrNodes[0] !== 'string') {
+    return (itemsOrNodes as MindMapNode[]).filter((node) => node.title)
+  }
+
+  return compactMindMapItems(itemsOrNodes as string[]).map((item, index) => ({
+    id: normalizeMindMapId(`${index}-${item}`),
+    title: item,
+    nodeType: 'learning_point',
+    level: 'foundation',
+    sourceFields: [],
+    evidence: [item],
+    children: [],
+  }))
 }
 
 function compactMindMapItems(items: string[]): string[] {
@@ -261,6 +299,15 @@ function compactMindMapItems(items: string[]): string[] {
 
 function normalizeMindMapItem(item: string): string {
   return item.replace(/\s+/g, ' ').trim()
+}
+
+function normalizeMindMapId(value: string): string {
+  return value
+    .replace(/\s+/g, '-')
+    .replace(/[^\w.\-\u4e00-\u9fa5]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    || 'node'
 }
 
 function pickMatchingItems(items: string[], keywords: string[], fallback: string[]): string[] {

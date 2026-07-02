@@ -10,6 +10,7 @@ from app.extraction.llm_schema import LLMExtractedJobCard
 from app.extraction.mock_extractor import ExtractedJobCard, extract_job_card
 from app.llm.providers import build_llm_provider, provider_settings_from_config
 from app.services.llm_configs import get_active_llm_provider_config
+from app.services.role_profiles import mark_role_profiles_stale
 
 
 def create_job_card_for_import(raw_import: RawImport, session: Session) -> JobCard | None:
@@ -44,6 +45,7 @@ def create_mock_job_card(
     if inference_note:
         extracted.inference_notes.append(inference_note)
     job_card = raw_import.job_cards[0] if raw_import.job_cards else JobCard(raw_import_id=raw_import.id)
+    previous_role_category = job_card.role_category
     apply_extracted_job_card(
         job_card,
         extracted,
@@ -55,6 +57,12 @@ def create_mock_job_card(
     session.commit()
     session.refresh(job_card)
     session.refresh(raw_import)
+    mark_role_profiles_stale(
+        [previous_role_category, job_card.role_category],
+        session,
+        reason=status,
+    )
+    session.commit()
     return job_card
 
 
@@ -71,6 +79,7 @@ def create_llm_job_card(raw_import: RawImport, session: Session) -> JobCard | No
     extracted_payload = result.get("job_card")
     extracted = LLMExtractedJobCard.model_validate(extracted_payload).to_extracted_job_card()
     job_card = raw_import.job_cards[0] if raw_import.job_cards else JobCard(raw_import_id=raw_import.id)
+    previous_role_category = job_card.role_category
     apply_extracted_job_card(
         job_card,
         extracted,
@@ -82,6 +91,12 @@ def create_llm_job_card(raw_import: RawImport, session: Session) -> JobCard | No
     session.commit()
     session.refresh(job_card)
     session.refresh(raw_import)
+    mark_role_profiles_stale(
+        [previous_role_category, job_card.role_category],
+        session,
+        reason="llm_extracted",
+    )
+    session.commit()
     return job_card
 
 

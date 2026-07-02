@@ -20,6 +20,8 @@ function RoleCategoriesPage({
   onSelectedRoleChange,
   onGenerateRoleProfile,
 }: RoleCategoriesPageProps) {
+  const isRoleProfileStale = roleProfileResult?.status === 'stale'
+
   return (
     <section className="records-section role-section" id="roles">
       <div className="section-heading">
@@ -66,21 +68,29 @@ function RoleCategoriesPage({
                   >
                     {generatingRoleProfileName === selectedRole.name
                       ? 'LLM生成中'
-                      : 'LLM生成画像'}
+                      : roleProfileResult
+                        ? '重新生成画像'
+                        : 'LLM生成画像'}
                   </button>
                 </div>
               </header>
 
               {roleProfileResult ? (
-                <section className="role-llm-profile">
+                <section className={`role-llm-profile ${isRoleProfileStale ? 'stale' : ''}`}>
                   <div>
-                    <strong>LLM岗位画像</strong>
+                    <strong>{isRoleProfileStale ? 'LLM岗位画像已过期' : 'LLM岗位画像'}</strong>
                     <span>
                       {roleProfileResult.provider} · {roleProfileResult.mode} ·{' '}
                       {roleProfileResult.role_profile.confidence}
+                      {isRoleProfileStale ? ' · stale' : ''}
                     </span>
                   </div>
                   <p>{roleProfileResult.role_profile.summary}</p>
+                  {isRoleProfileStale ? (
+                    <small>
+                      岗位样本已变化，当前学习地图会优先显示最新本地聚合结果。点击重新生成后会写入新的 LLM 画像和嵌套学习地图。
+                    </small>
+                  ) : null}
                   {roleProfileResult.role_profile.inference_notes.length > 0 ? (
                     <small>
                       {roleProfileResult.role_profile.inference_notes.slice(0, 2).join(' / ')}

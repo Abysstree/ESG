@@ -1,9 +1,10 @@
 from typing import Any
+import json
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.db.models import JobCard
+from app.db.models import JobCard, RoleCategoryProfile
 from app.llm.providers import build_llm_provider, provider_settings_from_config
 from app.services.llm_configs import get_active_llm_provider_config
 
@@ -61,13 +62,103 @@ def generate_role_profile(role_category: str, session: Session) -> dict[str, Any
 
     provider = build_llm_provider(provider_settings_from_config(active_config))
     result = provider.generate_role_profile(payload)
+    profile_payload = result.get("role_profile")
+    saved_profile = upsert_role_profile(
+        role_category=role_category,
+        provider=result.get("provider", provider.name),
+        mode=result.get("mode", "cloud"),
+        input_payload=payload,
+        role_profile=profile_payload,
+        raw_model_response=result.get("raw_response"),
+        session=session,
+    )
     return {
         "provider": result.get("provider", provider.name),
         "mode": result.get("mode", "cloud"),
         "input": payload,
-        "role_profile": result.get("role_profile"),
+        "role_profile": profile_payload,
         "raw_model_response": result.get("raw_response"),
+        "status": saved_profile.status,
+        "updated_at": saved_profile.updated_at,
     }
+
+
+def list_role_profiles(session: Session) -> list[RoleCategoryProfile]:
+    statement = select(RoleCategoryProfile).order_by(
+        RoleCategoryProfile.updated_at.desc(),
+        RoleCategoryProfile.role_category.asc(),
+    )
+    return list(session.scalars(statement))
+
+
+def get_role_profile(role_category: str, session: Session) -> RoleCategoryProfile | None:
+    return session.scalar(
+        select(RoleCategoryProfile).where(
+            RoleCategoryProfile.role_category == role_category,
+        ),
+    )
+
+
+def upsert_role_profile(
+    role_category: str,
+    provider: str,
+    mode: str,
+    input_payload: dict[str, Any],
+    role_profile: dict[str, Any] | None,
+    raw_model_response: Any,
+    session: Session,
+) -> RoleCategoryProfile:
+    saved_profile = get_role_profile(role_category, session)
+    if not saved_profile:
+        saved_profile = RoleCategoryProfile(role_category=role_category)
+
+    saved_profile.provider = provider
+    saved_profile.mode = mode
+    saved_profile.input_json = json.dumps(input_payload, ensure_ascii=False)
+    saved_profile.role_profile_json = json.dumps(role_profile or {}, ensure_ascii=False)
+    saved_profile.raw_model_response_json = json.dumps(
+        raw_model_response,
+        ensure_ascii=False,
+    )
+    saved_profile.status = "fresh"
+    saved_profile.job_count = int(input_payload.get("job_count") or 0)
+    session.add(saved_profile)
+    session.commit()
+    session.refresh(saved_profile)
+    return saved_profile
+
+
+def mark_role_profile_stale(
+    role_category: str | None,
+    session: Session,
+    reason: str = "job_cards_changed",
+) -> None:
+    if not role_category:
+        return
+
+    saved_profile = get_role_profile(role_category.strip(), session)
+    if not saved_profile:
+        return
+
+    saved_profile.status = "stale"
+    input_payload = saved_profile.input
+    input_payload["stale_reason"] = reason
+    saved_profile.input_json = json.dumps(input_payload, ensure_ascii=False)
+    session.add(saved_profile)
+
+
+def mark_role_profiles_stale(
+    role_categories: list[str | None],
+    session: Session,
+    reason: str = "job_cards_changed",
+) -> None:
+    seen: set[str] = set()
+    for role_category in role_categories:
+        normalized = str(role_category or "").strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        mark_role_profile_stale(normalized, session, reason=reason)
 
 
 def _unique(values: list[str], limit: int) -> list[str]:

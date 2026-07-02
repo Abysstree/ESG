@@ -54,6 +54,16 @@ export type RoleSummary = {
   commonBonusPoints: string[]
 }
 
+export type MindMapNode = {
+  id: string
+  title: string
+  nodeType: string
+  level: string
+  sourceFields: string[]
+  evidence: string[]
+  children: MindMapNode[]
+}
+
 export type MindMapBranch = {
   id: string
   title: string
@@ -62,6 +72,10 @@ export type MindMapBranch = {
   y: number
   color: string
   items: string[]
+  nodes: MindMapNode[]
+  sourceFields: string[]
+  evidence: string[]
+  focus: string
 }
 
 export type TextInputConfig = {

@@ -13,6 +13,7 @@ from app.services.job_cards import (
     rebuild_mock_job_cards,
     reextract_job_card_with_llm,
 )
+from app.services.role_profiles import mark_role_profiles_stale
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 
@@ -90,6 +91,7 @@ def update_job(
     if not job_card:
         raise HTTPException(status_code=404, detail="Job card not found.")
 
+    previous_role_category = job_card.role_category
     update_data = payload.model_dump(exclude_unset=True)
     list_fields = {
         "responsibilities": "responsibilities_json",
@@ -115,6 +117,11 @@ def update_job(
     job_card.status = "user_edited"
 
     session.add(job_card)
+    mark_role_profiles_stale(
+        [previous_role_category, job_card.role_category],
+        session,
+        reason="job_card_user_edited",
+    )
     session.commit()
     session.refresh(job_card)
     return job_card
@@ -129,6 +136,12 @@ def delete_job(
     if not job_card:
         raise HTTPException(status_code=404, detail="Job card not found.")
 
+    role_category = job_card.role_category
     session.delete(job_card)
+    mark_role_profiles_stale(
+        [role_category],
+        session,
+        reason="job_card_deleted",
+    )
     session.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

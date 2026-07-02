@@ -1808,6 +1808,17 @@
   background: var(--surface-alt);
 }
 
+.role-llm-profile.stale {
+  border-color: color-mix(in srgb, #d99b3d 58%, var(--line));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, #d99b3d 12%, transparent),
+      transparent 64%
+    ),
+    var(--surface-alt);
+}
+
 .role-llm-profile div {
   display: flex;
   justify-content: space-between;

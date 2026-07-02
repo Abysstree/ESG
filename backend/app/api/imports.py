@@ -10,6 +10,7 @@ from app.db.models import JobCard, RawImport
 from app.schemas.imports import RawImportCreate, RawImportRead
 from app.services.job_cards import create_job_card_for_import
 from app.services.ocr import OCRResult, extract_text_from_image
+from app.services.role_profiles import mark_role_profiles_stale
 from app.services.url_reader import read_url_text
 
 router = APIRouter(prefix="/imports", tags=["imports"])
@@ -103,10 +104,17 @@ def delete_import(
     if not raw_import:
         raise HTTPException(status_code=404, detail="Import record not found.")
 
+    role_categories: list[str | None] = []
     for job_card in session.scalars(
         select(JobCard).where(JobCard.raw_import_id == raw_import_id),
     ):
+        role_categories.append(job_card.role_category)
         session.delete(job_card)
+    mark_role_profiles_stale(
+        role_categories,
+        session,
+        reason="raw_import_deleted",
+    )
     _delete_screenshot_file(raw_import)
     session.delete(raw_import)
     session.commit()

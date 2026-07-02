@@ -159,6 +159,9 @@ LLM calls prefer cloud APIs first, while the architecture keeps room for local m
 - [x] Make reset recenter the canvas and collapse all expanded nodes.
 - [x] Keep final learning-point text complete instead of shortening it with ellipses.
 - [x] Reserve layout space so expanded nodes do not overlap siblings.
+- [x] Preserve nested LLM learning-map branches and nodes in frontend state.
+- [x] Render arbitrary-depth learning-map nodes with recursive progressive expansion.
+- [x] Use stale role-profile status so changed job samples fall back to fresh local aggregation until regeneration.
 
 #### Frontend Structure and Design
 
@@ -177,11 +180,10 @@ LLM calls prefer cloud APIs first, while the architecture keeps room for local m
 - [x] Expand README for public GitHub display.
 - [x] Rewrite public docs in English-first and Chinese-second format.
 - [x] Choose the MIT License and add a root `LICENSE` file.
+- [x] Persist generated role-category profiles and learning maps in SQLite.
 
 ### Open Work
 
-- [ ] Preserve the full nested LLM learning-map tree in frontend state instead of flattening it into branch item strings.
-- [ ] Render arbitrary-depth learning-map nodes with recursive layout and progressive expansion.
 - [ ] Add user editing for role profiles and learning-map nodes.
 - [ ] Add learning stages such as beginner, intermediate, advanced, project practice, and portfolio.
 - [ ] Add frequency and representative evidence for each role requirement.
@@ -219,6 +221,7 @@ LLM calls prefer cloud APIs first, while the architecture keeps room for local m
 - 2026-07-02: Refined learning-map interactions: single-click opens next level, double-click collapses, reset recenters and collapses, final nodes keep complete text.
 - 2026-07-02: Rewrote public documentation in English-first and Chinese-second format, retained local `AGENTS.md`, and removed legacy `AGENT.md`.
 - 2026-07-02: Added the MIT License and updated public documentation to reflect the license decision.
+- 2026-07-02: Persisted role-category profiles, restored saved LLM maps on startup, preserved nested LLM learning-map trees, and marked cached profiles stale when job samples change.
 
 ---
 
@@ -381,6 +384,9 @@ LLM 优先使用云端 API，同时架构上保留后续接入本地模型提供
 - [x] 复位会让画布回中并收起所有展开。
 - [x] 最终学习点保留完整文本，不再用省略号截断。
 - [x] 为展开节点预留空间，避免覆盖同级节点。
+- [x] 在前端状态中保留 LLM 学习地图的嵌套 branches 和 nodes。
+- [x] 用递归渐进展开渲染任意深度学习地图节点。
+- [x] 使用过期岗位画像状态，让岗位样本变化后先回退到最新本地聚合，等待重新生成。
 
 #### 前端结构与设计
 
@@ -399,11 +405,10 @@ LLM 优先使用云端 API，同时架构上保留后续接入本地模型提供
 - [x] 扩写 README 用于公开 GitHub 展示。
 - [x] 将公开文档重写为英文在前、中文在后的格式。
 - [x] 选择 MIT License，并在根目录添加 `LICENSE` 文件。
+- [x] 将生成的岗位大类画像和学习地图持久化到 SQLite。
 
 ### 待完成工作
 
-- [ ] 在前端状态中保留完整嵌套 LLM 学习地图树，而不是压平成分支字符串列表。
-- [ ] 用递归布局渲染任意深度学习地图节点，并支持渐进展开。
 - [ ] 添加岗位画像和学习地图节点的用户编辑。
 - [ ] 添加入门、进阶、高阶、项目实践和作品集等学习阶段。
 - [ ] 为每个岗位要求添加频率和代表证据。
@@ -441,3 +446,4 @@ LLM 优先使用云端 API，同时架构上保留后续接入本地模型提供
 - 2026-07-02：优化学习地图交互：单击打开下一层、双击收起、复位回中并收起、最终节点保留完整文本。
 - 2026-07-02：将公开文档重写为英文在前、中文在后，保留本地 `AGENTS.md`，删除旧 `AGENT.md`。
 - 2026-07-02：添加 MIT License，并同步更新公开文档中的许可证说明。
+- 2026-07-02：持久化岗位大类画像，启动时恢复已保存的 LLM 地图，保留 LLM 学习地图嵌套树，并在岗位样本变化时将缓存画像标记为过期。

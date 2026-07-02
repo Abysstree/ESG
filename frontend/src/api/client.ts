@@ -15,6 +15,7 @@ import type {
   SearchProviderConfigCreate,
   SearchProviderConfigUpdate,
   SearchStatus,
+  StoredRoleProfile,
 } from '../types/api'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
@@ -100,6 +101,10 @@ export function generateRoleProfile(roleCategory: string): Promise<LLMRoleProfil
     method: 'POST',
     body: JSON.stringify({ role_category: roleCategory }),
   })
+}
+
+export function listRoleProfiles(): Promise<StoredRoleProfile[]> {
+  return request<StoredRoleProfile[]>('/api/roles/profiles')
 }
 
 export function reorderJobs(jobIds: number[]): Promise<JobCard[]> {
