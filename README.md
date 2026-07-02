@@ -35,26 +35,26 @@ ESG is built around a practical learning idea: instead of studying only from uni
 
 Backend:
 
-- FastAPI.
-- Python.
-- SQLite.
-- SQLAlchemy.
-- Pydantic.
-- Optional PaddleOCR integration.
+- FastAPI
+- Python
+- SQLite
+- SQLAlchemy
+- Pydantic
+- Optional PaddleOCR integration
 
 Frontend:
 
-- React.
-- Vite.
-- TypeScript.
-- React Flow.
-- Oxlint.
+- React
+- Vite
+- TypeScript
+- React Flow
+- Oxlint
 
 Local tooling:
 
-- `uv` for the backend Python environment.
-- `npm` for the frontend.
-- Chrome/Edge unpacked extension for local page import.
+- `uv` for the backend Python environment
+- `npm` for the frontend
+- Chrome/Edge unpacked extension for local page import
 
 ### Repository Structure
 
@@ -184,12 +184,12 @@ ESG is local-first. Local databases, screenshots, raw imports, secrets, and gene
 
 Before publishing or sharing a fork, check that you are not committing:
 
-- `.env` files.
-- SQLite databases.
-- screenshots.
-- raw imported job text.
-- API key encryption material.
-- provider API keys.
+- `.env` files
+- SQLite databases
+- screenshots
+- raw imported job text
+- API key encryption material
+- provider API keys
 
 ### Project Status
 
