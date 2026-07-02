@@ -1,0 +1,179 @@
+:root {
+  color-scheme: light dark;
+  font-family:
+    Inter, "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, sans-serif;
+  color: #17202a;
+  background: #f7f8fa;
+}
+
+body {
+  width: 430px;
+  margin: 0;
+  background: #f7f8fa;
+}
+
+.popup-shell {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #5f6f82;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+}
+
+.page-summary {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #d8dee7;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.page-title,
+.page-url,
+.cleaning-mode,
+.page-count,
+.hint,
+.status-message {
+  margin: 0;
+}
+
+.page-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.page-url,
+.cleaning-mode,
+.page-count,
+.hint {
+  color: #5f6f82;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.field {
+  display: grid;
+  gap: 7px;
+  color: #243447;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+input {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  box-sizing: border-box;
+  color: #17202a;
+  background: #ffffff;
+  font: inherit;
+}
+
+textarea {
+  min-height: 220px;
+  max-height: 420px;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  box-sizing: border-box;
+  color: #17202a;
+  background: #ffffff;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Consolas, "Microsoft YaHei",
+    monospace;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  border-color: #11a7a0;
+  outline: 3px solid rgba(17, 167, 160, 0.18);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 0.82fr 1fr;
+  gap: 10px;
+}
+
+button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 7px;
+  color: #ffffff;
+  background: #0f8f88;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.secondary-button {
+  color: #17202a;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.status-message {
+  min-height: 18px;
+  color: #5f6f82;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.status-message.success {
+  color: #0b7a3b;
+}
+
+.status-message.error {
+  color: #b42318;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root,
+  body {
+    color: #e6edf3;
+    background: #111827;
+  }
+
+  .page-summary,
+  input,
+  textarea,
+  .secondary-button {
+    color: #e6edf3;
+    border-color: #334155;
+    background: #172033;
+  }
+
+  .eyebrow,
+  .page-url,
+  .cleaning-mode,
+  .page-count,
+  .hint,
+  .status-message {
+    color: #9fb0c3;
+  }
+
+  .field {
+    color: #e6edf3;
+  }
+}

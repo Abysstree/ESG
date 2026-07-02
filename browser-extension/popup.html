@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ESG 岗位导入助手</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header>
+        <p class="eyebrow">EmploymentSkillsGuide</p>
+        <h1>导入当前岗位页</h1>
+      </header>
+
+      <section class="page-summary" aria-live="polite">
+        <p id="page-title" class="page-title">正在读取当前页面...</p>
+        <p id="page-url" class="page-url"></p>
+        <p id="cleaning-mode" class="cleaning-mode"></p>
+        <p id="page-count" class="page-count"></p>
+      </section>
+
+      <label class="field">
+        <span>导入正文预览</span>
+        <textarea
+          id="preview-text"
+          spellcheck="false"
+          placeholder="读取当前页面后，这里会显示将导入 ESG 的正文。"
+        ></textarea>
+      </label>
+
+      <label class="field">
+        <span>本地后端地址</span>
+        <input id="api-base-url" type="url" value="http://127.0.0.1:8000" />
+      </label>
+
+      <p class="hint">
+        如果页面杂音很多，可以先在网页里选中岗位正文，再点击导入。
+      </p>
+
+      <div class="actions">
+        <button id="refresh-button" class="secondary-button" type="button">
+          重新读取
+        </button>
+        <button id="import-button" type="button">导入到 ESG</button>
+      </div>
+      <p id="status-message" class="status-message" role="status"></p>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

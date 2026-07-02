@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "ESG 岗位导入助手",
+  "description": "从当前浏览器页面读取已显示的岗位文本，并导入本地 EmploymentSkillsGuide。",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "导入到 ESG"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["http://127.0.0.1:8000/*", "http://localhost:8000/*"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
