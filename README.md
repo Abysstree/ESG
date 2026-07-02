@@ -197,7 +197,7 @@ ESG is an early local MVP. The current implementation already covers the main lo
 
 ### License
 
-No license has been selected yet.
+ESG is released under the MIT License. See `LICENSE`.
 
 ---
 
@@ -398,4 +398,4 @@ ESG 目前是早期本地 MVP。当前实现已经覆盖从导入、抽取、岗
 
 ### License
 
-暂未选择开源许可证。
+ESG 采用 MIT License 发布。详见 `LICENSE`。

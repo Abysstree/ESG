@@ -176,6 +176,7 @@ LLM calls prefer cloud APIs first, while the architecture keeps room for local m
 - [x] Add roadmap and project log.
 - [x] Expand README for public GitHub display.
 - [x] Rewrite public docs in English-first and Chinese-second format.
+- [x] Choose the MIT License and add a root `LICENSE` file.
 
 ### Open Work
 
@@ -190,7 +191,7 @@ LLM calls prefer cloud APIs first, while the architecture keeps room for local m
 - [ ] Decide whether to move local encryption keys into the OS keychain.
 - [ ] Decide when to support a local model provider such as Ollama.
 - [ ] Decide whether to add PostgreSQL, accounts, or cloud sync later.
-- [ ] Choose an open-source license before publishing broadly.
+- [x] Choose an open-source license before publishing broadly. MIT was selected on 2026-07-02.
 
 ### Project Log
 
@@ -217,6 +218,7 @@ LLM calls prefer cloud APIs first, while the architecture keeps room for local m
 - 2026-07-02: Reworked the learning map into a React Flow Xmind-like canvas with progressive expansion.
 - 2026-07-02: Refined learning-map interactions: single-click opens next level, double-click collapses, reset recenters and collapses, final nodes keep complete text.
 - 2026-07-02: Rewrote public documentation in English-first and Chinese-second format, retained local `AGENTS.md`, and removed legacy `AGENT.md`.
+- 2026-07-02: Added the MIT License and updated public documentation to reflect the license decision.
 
 ---
 
@@ -396,6 +398,7 @@ LLM 优先使用云端 API，同时架构上保留后续接入本地模型提供
 - [x] 添加路线图和项目日志。
 - [x] 扩写 README 用于公开 GitHub 展示。
 - [x] 将公开文档重写为英文在前、中文在后的格式。
+- [x] 选择 MIT License，并在根目录添加 `LICENSE` 文件。
 
 ### 待完成工作
 
@@ -410,7 +413,7 @@ LLM 优先使用云端 API，同时架构上保留后续接入本地模型提供
 - [ ] 决定是否将本地加密密钥迁移到系统 keychain。
 - [ ] 决定何时支持 Ollama 等本地模型提供商。
 - [ ] 决定后续是否加入 PostgreSQL、账号系统或云同步。
-- [ ] 广泛公开前选择开源许可证。
+- [x] 广泛公开前选择开源许可证。已于 2026-07-02 选择 MIT。
 
 ### 项目日志
 
@@ -437,3 +440,4 @@ LLM 优先使用云端 API，同时架构上保留后续接入本地模型提供
 - 2026-07-02：将学习地图重做为 React Flow Xmind 风格渐进画布。
 - 2026-07-02：优化学习地图交互：单击打开下一层、双击收起、复位回中并收起、最终节点保留完整文本。
 - 2026-07-02：将公开文档重写为英文在前、中文在后，保留本地 `AGENTS.md`，删除旧 `AGENT.md`。
+- 2026-07-02：添加 MIT License，并同步更新公开文档中的许可证说明。
